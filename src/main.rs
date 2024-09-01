@@ -43,9 +43,59 @@ fn find_bounds(segment: &TrackSegment) -> (f64, f64, f64, f64) {
     (min_lat, min_lon, max_lat, max_lon)
 }
 
+fn add_segment_to_data_quadratic(
+    mut data: Data,
+    segment: &TrackSegment,
+    width: f64,
+    height: f64,
+) -> Data {
+    let (min_lat, min_lon, max_lat, max_lon) = find_bounds(segment);
+
+    let points: Vec<(f64, f64)> = segment
+        .points
+        .iter()
+        .map(|point| {
+            let x = (point.point().x() - min_lon) / (max_lon - min_lon) * width;
+            let y = (1.0 - (point.point().y() - min_lat) / (max_lat - min_lat)) * height;
+            (x, y)
+        })
+        .collect();
+
+    for i in 0..points.len() {
+        if i == 0 {
+            data = data.move_to(points[i]);
+        } else if i > 1 {
+            let mid_x = (points[i - 1].0 + points[i].0) / 2.0;
+            let mid_y = (points[i - 1].1 + points[i].1) / 2.0;
+            data = data.quadratic_curve_to((points[i - 1].0, points[i - 1].1, mid_x, mid_y));
+        }
+    }
+
+    data
+}
+
 fn add_segment_to_data(mut data: Data, segment: &TrackSegment, width: f64, height: f64) -> Data {
     let (min_lat, min_lon, max_lat, max_lon) = find_bounds(segment);
 
+    // let points: Vec<(f64, f64)> = segment
+    //     .points
+    //     .iter()
+    //     .map(|point| {
+    //         let x = (point.point().x() - min_lon) / (max_lon - min_lon) * width;
+    //         let y = (1.0 - (point.point().y() - min_lat) / (max_lat - min_lat)) * height;
+    //         (x, y)
+    //     })
+    //     .collect();
+
+    // for i in 0..points.len() {
+    //     if i == 0 {
+    //         data = data.move_to(points[i]);
+    //     } else if i > 1 {
+    //         let mid_x = (points[i - 1].0 + points[i].0) / 2.0;
+    //         let mid_y = (points[i - 1].1 + points[i].1) / 2.0;
+    //         data = data.quadratic_curve_to((points[i - 1].0, points[i - 1].1, mid_x, mid_y));
+    //     }
+    //
     for (i, point) in segment.points.iter().enumerate() {
         let x = (point.point().x() - min_lon) / (max_lon - min_lon) * width;
         let y = (1.0 - (point.point().y() - min_lat) / (max_lat - min_lat)) * height;
@@ -56,6 +106,7 @@ fn add_segment_to_data(mut data: Data, segment: &TrackSegment, width: f64, heigh
             data = data.line_to((x, y))
         }
     }
+
     data
 }
 
@@ -64,14 +115,15 @@ fn gpx_to_svg(gpx: Gpx, width: f32, height: f32) -> Document {
 
     if let Some(track) = gpx.tracks.first() {
         for segment in &track.segments {
-            data = add_segment_to_data(data, segment, width as f64, height as f64)
+            // data = add_segment_to_data_quadratic(data, segment, width as f64, height as f64)
+            data = add_segment_to_data_quadratic(data, segment, width as f64, height as f64)
         }
     }
 
     let path = Path::new()
         .set("fill", "none")
         .set("stroke", "#ff0000")
-        .set("stroke-width", 6)
+        .set("stroke-width", 10)
         .set("stroke-linecap", "round") // Linee con estremità arrotondate
         .set("stroke-linejoin", "round") // Giunzioni delle linee arrotondate
         .set("d", data);
