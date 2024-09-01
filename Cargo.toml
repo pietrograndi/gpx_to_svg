@@ -4,3 +4,5 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+gpx = "0.10.0"
+svg = "0.17.0"
